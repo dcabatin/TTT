@@ -63,7 +63,6 @@ def convert_to_id(vocab, sentences):
 	:param sentences:  list of lists of words, each representing padded sentence
 	:return: numpy array of integers, with each row representing the word indeces in the corresponding sentences
   """
-	print([[vocab[word] if word in vocab else vocab[UNK_TOKEN] for word in sentence]  for sentence in sentences])
 	return np.stack(
 		[[vocab[word] if word in vocab else vocab[UNK_TOKEN] for word in sentence] for sentence in sentences])
 
