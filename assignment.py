@@ -55,17 +55,21 @@ def test(model, test_from_lang, test_to_lang, to_lang_padding_index):
 	total_loss = 0
 	total_acc = 0
 	steps = 0
-	for i in range(0, test_from_lang.shape[0], model.batch_size):
+	nonpad_correct = 0
+	nonpad_seen = 0
+	for i in range(0, test_from_lang.shape[0] - model.batch_size + 1, model.batch_size):
 		fr_data = test_from_lang[i: i + model.batch_size]
 		en_data = test_to_lang[i: i + model.batch_size]
 		prbs = model.call(fr_data, en_data[:, :-1])
 		labels = en_data[:, 1:]
-		mask = tf.equal(labels, to_lang_padding_index)
+		mask = tf.not_equal(labels, to_lang_padding_index)
 		total_loss += model.loss_function(prbs, labels, mask)
-		total_acc += model.accuracy_function(prbs, labels, mask)
+		np_seen_batch = tf.reduce_sum(tf.cast(mask, tf.float32))
+		nonpad_seen += np_seen_batch
+		nonpad_correct += np_seen_batch * model.accuracy_function(prbs, labels, mask)
 		steps += 1
 
-	return tf.exp(total_loss / steps), total_acc / steps
+	return tf.exp(total_loss / steps), nonpad_correct / nonpad_seen
 
 def main():
 	print("Running preprocessing...")
@@ -81,12 +85,14 @@ def main():
 
 
 	# TODO:
-	# Train and Test Model for 1 epoch.
-	train(model, train_from_lang, train_to_lang, to_lang_padding_index)
+	# Train and Test Model for n epochs
+	n_epochs = 20
+	for _ in range(n_epochs):
+		train(model, train_from_lang, train_to_lang, to_lang_padding_index)
 	perplexity, acc = test(model, test_from_lang, test_to_lang, to_lang_padding_index)
 	print('Perplexity: ', perplexity)
 	print('Accuracy: ', acc)
 if __name__ == '__main__':
-   main()
+	main()
 
 
