@@ -32,6 +32,7 @@ class Transformer_Seq2Seq(tf.keras.Model):
 		self.en_embedding_layer = tf.keras.layers.Embedding(english_vocab_size, self.embedding_size)
 
 		# Create positional encoder layers
+
 		self.fr_positional_layer = transformer.Position_Encoding_Layer(french_window_size, self.embedding_size)
 		self.en_positional_layer = transformer.Position_Encoding_Layer(english_window_size, self.embedding_size)
 
