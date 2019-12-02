@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import tensorflow as tf
 import torch.nn as nn
 import torch.functional as F
 import torch
@@ -56,7 +55,7 @@ def train(model, train_from_lang, train_to_lang, to_lang_padding_index):
 		loss = get_loss(logits, labels, torch.ne(labels, to_lang_padding_index))
 		loss.backward()
 		model.optimizer.step()
-		print('Train perplexity for batch of {}-{} / {} is {}'.format(i, i + model.batch_size, train_from_lang.shape[0], tf.exp(loss)))
+		print('Train perplexity for batch of {}-{} / {} is {}'.format(i, i + model.batch_size, train_from_lang.shape[0], torch.exp(loss)))
 		print('Loss is', loss)
 
 def test(model, test_from_lang, test_to_lang, to_lang_padding_index):
@@ -87,7 +86,7 @@ def test(model, test_from_lang, test_to_lang, to_lang_padding_index):
 		nonpad_correct += np_seen_batch * get_accuracy(prbs, labels, mask)
 		steps += 1
 
-	return tf.exp(total_loss / steps), nonpad_correct / nonpad_seen
+	return torch.exp(total_loss / steps), nonpad_correct / nonpad_seen
 
 def main():
 	print("Running preprocessing...")
