@@ -110,7 +110,7 @@ def main():
 	n_epochs = 20
 	for _ in range(n_epochs):
 		train(model, train_from_lang, train_to_lang, to_lang_padding_index)
-		indices = np.array(range(train_from_lang.shape[0]))
+		indices = np.array(range(test_from_lang.shape[0]))
 		np.random.shuffle(indices)
 		from_shuf = test_from_lang[indices[:model.batch_size], ...]
 		to_shuf = test_to_lang[indices[:model.batch_size], ...]
