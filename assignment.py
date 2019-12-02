@@ -1,11 +1,36 @@
 import os
 import numpy as np
 import tensorflow as tf
+import torch.nn as nn
+import torch.functional as F
+import torch
 import numpy as np
 from preprocess import *
 from universal_transformer import UniversalTransformer
 import sys
 
+def get_loss(logits, labels, mask):
+	# adapted from https://gist.github.com/jihunchoi/f1434a77df9db1bb337417854b398df1
+	# logits_flat: (batch * max_len, num_classes)
+	logits_flat = logits.view(-1, logits.size(-1))
+	# log_probs_flat: (batch * max_len, num_classes)
+	log_probs_flat = F.log_softmax(logits_flat)
+	# target_flat: (batch * max_len, 1)
+	target_flat = labels.view(-1, 1)
+	# losses_flat: (batch * max_len, 1)
+	losses_flat = -torch.gather(log_probs_flat, dim=1, index=target_flat)
+	# losses: (batch, max_len)
+	losses = losses_flat.view(*labels.size())
+	losses = losses * mask.float()
+	return losses.sum() / mask.float().sum().sum()
+
+def get_accuracy(logits, labels, mask):
+	decoded_symbols = np.argmax(logits, axis=2)
+	correct = torch.eq(decoded_symbols, labels)
+	correct_flat = correct.view(-1)
+	mask_flat = mask.view(-1)
+	accuracy = correct_flat[mask_flat.bool()].mean()
+	return accuracy
 
 def train(model, train_from_lang, train_to_lang, to_lang_padding_index):
 	"""
@@ -17,29 +42,22 @@ def train(model, train_from_lang, train_to_lang, to_lang_padding_index):
 	:param to_lang_padding_index: the padding index, the id of *PAD* token. This integer is used to mask padding labels.
 	:return: None
 	"""
-
-	indices = tf.random.shuffle(range(train_from_lang.shape[0]))
-	fr_shuf = tf.gather(train_from_lang, indices)
-	en_shuf = tf.gather(train_to_lang, indices)
+	loss_layer = nn.CrossEntropyLoss()
+	indices = np.array(range(train_from_lang.shape[0]))
+	np.random.shuffle(indices)
+	from_shuf = train_from_lang[indices, ...]
+	to_shuf = train_to_lang[indices, ...]
 	for i in range(0, train_from_lang.shape[0], model.batch_size):
-		fr_data = fr_shuf[i: i + model.batch_size]
-		en_data = en_shuf[i: i + model.batch_size]
-		with tf.GradientTape() as tape:
-			prbs = model.call(fr_data, en_data[:, :-1])
-			labels = en_data[:, 1:]
-			loss = model.loss_function(prbs, labels, tf.not_equal(labels, to_lang_padding_index))
-			print('Train perplexity for batch of {}-{} / {} is {}'.format(i, i + model.batch_size, train_from_lang.shape[0], tf.exp(loss)))
-			print('Loss is', loss)
-		gradients = tape.gradient(loss, model.trainable_variables)
-		model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
-	# NOTE: For each training step, you should pass in the from_lang sentences to be used by the encoder,
-	# and to_lang sentences to be used by the decoder
-	# - The to_lang sentences passed to the decoder have the last token in the window removed:
-	#	 [STOP CS147 is the best class. STOP *PAD*] --> [STOP CS147 is the best class. STOP]
-	#
-	# - When computing loss, the decoder labels should have the first word removed:
-	#	 [STOP CS147 is the best class. STOP] --> [CS147 is the best class. STOP]
+		model.optimizer.zero_grad()
+		from_data = from_shuf[i: i + model.batch_size]
+		to_data = to_shuf[i: i + model.batch_size]
+		logits = model.forward(from_data, to_data[:, :-1])
+		labels = to_data[:, 1:]
+		loss = get_loss(logits, labels, torch.ne(labels, to_lang_padding_index))
+		loss.backward()
+		model.optimizer.step()
+		print('Train perplexity for batch of {}-{} / {} is {}'.format(i, i + model.batch_size, train_from_lang.shape[0], tf.exp(loss)))
+		print('Loss is', loss)
 
 def test(model, test_from_lang, test_to_lang, to_lang_padding_index):
 	"""
@@ -58,15 +76,15 @@ def test(model, test_from_lang, test_to_lang, to_lang_padding_index):
 	nonpad_correct = 0
 	nonpad_seen = 0
 	for i in range(0, test_from_lang.shape[0] - model.batch_size + 1, model.batch_size):
-		fr_data = test_from_lang[i: i + model.batch_size]
-		en_data = test_to_lang[i: i + model.batch_size]
-		prbs = model.call(fr_data, en_data[:, :-1])
-		labels = en_data[:, 1:]
-		mask = tf.not_equal(labels, to_lang_padding_index)
-		total_loss += model.loss_function(prbs, labels, mask)
-		np_seen_batch = tf.reduce_sum(tf.cast(mask, tf.float32))
+		from_data = test_from_lang[i: i + model.batch_size]
+		to_data = test_to_lang[i: i + model.batch_size]
+		prbs = model.forward(from_data, to_data[:, :-1])
+		labels = to_data[:, 1:]
+		mask = torch.ne(labels, to_lang_padding_index)
+		total_loss += get_loss(prbs, labels, mask)
+		np_seen_batch = mask.sum().sum()
 		nonpad_seen += np_seen_batch
-		nonpad_correct += np_seen_batch * model.accuracy_function(prbs, labels, mask)
+		nonpad_correct += np_seen_batch * get_accuracy(prbs, labels, mask)
 		steps += 1
 
 	return tf.exp(total_loss / steps), nonpad_correct / nonpad_seen
