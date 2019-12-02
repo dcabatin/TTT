@@ -1,5 +1,5 @@
 import torch
-from torch import F
+import torch.functional as F
 from torch.nn import TransformerEncoder, TransformerDecoder, TransformerEncoderLayer, TransformerDecoderLayer, MultiheadAttention, Module, Sequential
 import torch.nn as nn
 
@@ -22,6 +22,7 @@ class UniversalTransformer(Module):
 			out_seq_len, self.nheads, self.decoder_T, self.dropout, self.embedding_size)
 		self.enc_embedding_layer = nn.Embedding(in_vocab_len, self.embedding_size)
 		self.dec_embedding_layer = nn.Embedding(out_vocab_len, self.embedding_size)
+		self.ff_layer = nn.Linear(self.embedding_size, out_vocab_len)
 
 		self.optimizer = torch.optim.Adam(self.parameters())
 
@@ -30,7 +31,7 @@ class UniversalTransformer(Module):
 		enc_output = self.enc_layer(enc_embeddings)
 		dec_embeddings = self.dec_embedding_layer(decoder_input)
 		dec_output = self.dec_layer(dec_embeddings, enc_output)
-		return dec_output
+		return self.ff_layer(dec_output)
 
 class UniversalTransformerEncoder(Module):
 	def __init__(self, seq_len, nheads, T, dropout, emb_size, *args, **kwargs):

@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
 import torch
 import numpy as np
 from preprocess import *
@@ -15,7 +15,7 @@ def get_loss(logits, labels, mask):
 	# log_probs_flat: (batch * max_len, num_classes)
 	log_probs_flat = F.log_softmax(logits_flat)
 	# target_flat: (batch * max_len, 1)
-	target_flat = labels.view(-1, 1)
+	target_flat = labels.view(-1, labels.size(-1))
 	# losses_flat: (batch * max_len, 1)
 	losses_flat = -torch.gather(log_probs_flat, dim=1, index=target_flat)
 	# losses: (batch, max_len)
@@ -41,18 +41,19 @@ def train(model, train_from_lang, train_to_lang, to_lang_padding_index):
 	:param to_lang_padding_index: the padding index, the id of *PAD* token. This integer is used to mask padding labels.
 	:return: None
 	"""
-	loss_layer = nn.CrossEntropyLoss()
+	loss_layer = nn.CrossEntropyLoss(ignore_index=to_lang_padding_index)
 	indices = np.array(range(train_from_lang.shape[0]))
 	np.random.shuffle(indices)
 	from_shuf = train_from_lang[indices, ...]
 	to_shuf = train_to_lang[indices, ...]
 	for i in range(0, train_from_lang.shape[0], model.batch_size):
 		model.optimizer.zero_grad()
-		from_data = from_shuf[i: i + model.batch_size]
-		to_data = to_shuf[i: i + model.batch_size]
+		from_data = torch.tensor(from_shuf[i: i + model.batch_size])
+		to_data = torch.tensor(to_shuf[i: i + model.batch_size])
 		logits = model.forward(from_data, to_data[:, :-1])
 		labels = to_data[:, 1:]
-		loss = get_loss(logits, labels, torch.ne(labels, to_lang_padding_index))
+		print('logits shape:', logits.size(), 'labels shape:', labels.size())
+		loss = loss_layer(logits.view(-1, logits.size(-1)), labels.reshape(-1))
 		loss.backward()
 		model.optimizer.step()
 		print('Train perplexity for batch of {}-{} / {} is {}'.format(i, i + model.batch_size, train_from_lang.shape[0], torch.exp(loss)))
