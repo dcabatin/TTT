@@ -112,8 +112,8 @@ def main():
 		train(model, train_from_lang, train_to_lang, to_lang_padding_index)
 		indices = np.array(range(test_from_lang.shape[0]))
 		np.random.shuffle(indices)
-		from_shuf = test_from_lang[indices[:model.batch_size], ...]
-		to_shuf = test_to_lang[indices[:model.batch_size], ...]
+		from_shuf = test_from_lang[indices[:model.batch_size*10], ...]
+		to_shuf = test_to_lang[indices[:model.batch_size*10], ...]
 		perp, acc = test(model, from_shuf, to_shuf, to_lang_padding_index)
 		print('========= EPOCH %d ==========' % _)
 		print('Test perplexity is', perp, ':: Test accuracy is', acc)
