@@ -1,6 +1,4 @@
 import numpy as np
-import tensorflow as tf
-import numpy as np
 
 ##########DO NOT CHANGE#####################
 PAD_TOKEN = "*PAD*"
