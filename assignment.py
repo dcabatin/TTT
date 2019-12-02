@@ -24,11 +24,11 @@ def get_loss(logits, labels, mask):
 	return losses.sum() / mask.float().sum().sum()
 
 def get_accuracy(logits, labels, mask):
-	decoded_symbols = np.argmax(logits, axis=2)
+	decoded_symbols = torch.argmax(logits, axis=2)
 	correct = torch.eq(decoded_symbols, labels)
 	correct_flat = correct.view(-1)
 	mask_flat = mask.view(-1)
-	accuracy = correct_flat[mask_flat.bool()].mean()
+	accuracy = correct_flat[mask_flat.bool()].float().mean()
 	return accuracy
 
 def train(model, train_from_lang, train_to_lang, to_lang_padding_index):
@@ -41,6 +41,7 @@ def train(model, train_from_lang, train_to_lang, to_lang_padding_index):
 	:param to_lang_padding_index: the padding index, the id of *PAD* token. This integer is used to mask padding labels.
 	:return: None
 	"""
+	model = model.train()
 	loss_layer = nn.CrossEntropyLoss(ignore_index=to_lang_padding_index)
 	indices = np.array(range(train_from_lang.shape[0]))
 	np.random.shuffle(indices)
@@ -70,28 +71,30 @@ def test(model, test_from_lang, test_to_lang, to_lang_padding_index):
 	:returns: perplexity of the test set, per symbol accuracy on test set
 	"""
 	# Note: Follow the same procedure as in train() to construct batches of data!
+	model = model.eval()
+	loss_layer = nn.CrossEntropyLoss(ignore_index=to_lang_padding_index)
 	total_loss = 0
 	total_acc = 0
 	steps = 0
 	nonpad_correct = 0
 	nonpad_seen = 0
 	for i in range(0, test_from_lang.shape[0] - model.batch_size + 1, model.batch_size):
-		from_data = test_from_lang[i: i + model.batch_size]
-		to_data = test_to_lang[i: i + model.batch_size]
-		prbs = model.forward(from_data, to_data[:, :-1])
+		from_data = torch.tensor(test_from_lang[i: i + model.batch_size])
+		to_data = torch.tensor(test_to_lang[i: i + model.batch_size])
+		logits = model.forward(from_data, to_data[:, :-1])
 		labels = to_data[:, 1:]
+		total_loss += loss_layer(logits.view(-1, logits.size(-1)), labels.reshape(-1))
 		mask = torch.ne(labels, to_lang_padding_index)
-		total_loss += get_loss(prbs, labels, mask)
-		np_seen_batch = mask.sum().sum()
+		np_seen_batch = np.count_nonzero(mask)
 		nonpad_seen += np_seen_batch
-		nonpad_correct += np_seen_batch * get_accuracy(prbs, labels, mask)
+		nonpad_correct += np_seen_batch * get_accuracy(logits, labels, mask)
 		steps += 1
 
 	return torch.exp(total_loss / steps), nonpad_correct / nonpad_seen
 
 def main():
 	print("Running preprocessing...")
-	lensent = 13
+	lensent = 25
 	train_from_lang,test_from_lang,train_to_lang,test_to_lang,\
 	from_lang_vocab,to_lang_vocab,to_lang_padding_index = \
 		get_data('data/MTNT/train/train.fr-en.tsv', 'data/MTNT/test/test.fr-en.tsv', lensent)
@@ -107,6 +110,13 @@ def main():
 	n_epochs = 20
 	for _ in range(n_epochs):
 		train(model, train_from_lang, train_to_lang, to_lang_padding_index)
+		indices = np.array(range(train_from_lang.shape[0]))
+		np.random.shuffle(indices)
+		from_shuf = test_from_lang[indices[:model.batch_size], ...]
+		to_shuf = test_to_lang[indices[:model.batch_size], ...]
+		perp, acc = test(model, from_shuf, to_shuf, to_lang_padding_index)
+		print('========= EPOCH %d ==========' % _)
+		print('Test perplexity is', perp, ':: Test accuracy is', acc)
 	perplexity, acc = test(model, test_from_lang, test_to_lang, to_lang_padding_index)
 	print('Perplexity: ', perplexity)
 	print('Accuracy: ', acc)
