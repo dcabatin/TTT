@@ -1,5 +1,5 @@
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 from torch.nn import TransformerEncoder, TransformerDecoder, TransformerEncoderLayer, TransformerDecoderLayer, MultiheadAttention, Module, Sequential
 import torch.nn as nn
 import math
@@ -23,9 +23,9 @@ class UniversalTransformer(Module):
 			out_seq_len, self.nheads, self.decoder_T, self.dropout, self.embedding_size)
 		self.enc_embedding_layer = nn.Embedding(in_vocab_len, self.embedding_size)
 		self.dec_embedding_layer = nn.Embedding(out_vocab_len, self.embedding_size)
-		self.ff_layer_1 = nn.Linear(self.embedding_size, 2048)
-		self.ff_layer_2 = nn.Linear(2048, out_vocab_len)
-		self.dropout_layer = nn.Dropout(self.dropout)
+		self.ff_layer_1 = nn.Linear(self.embedding_size, out_vocab_len)
+		# self.ff_layer_2 = nn.Linear(2048, out_vocab_len)
+		# self.dropout_layer = nn.Dropout(self.dropout)
 
 		self.optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
 
@@ -34,7 +34,7 @@ class UniversalTransformer(Module):
 		enc_output = self.enc_layer(enc_embeddings)
 		dec_embeddings = self.dec_embedding_layer(decoder_input)
 		dec_output = self.dec_layer(dec_embeddings, enc_output)
-		return self.ff_layer_2(self.dropout_layer(F.relu(self.ff_layer_1(dec_output))))
+		return self.ff_layer_1(dec_output)
 
 class UniversalTransformerEncoder(Module):
 	def __init__(self, seq_len, nheads, T, dropout, emb_size, *args, **kwargs):
@@ -90,4 +90,3 @@ class PositionalTimeEncoding(nn.Module):
 		pt[:, 1::2] = torch.cos(t * self.div_term.to(device))
 		x = x + pt
 		return x
-
