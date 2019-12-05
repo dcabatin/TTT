@@ -92,6 +92,23 @@ def test(model, test_from_lang, test_to_lang, to_lang_padding_index):
 
 	return torch.exp(total_loss / steps), nonpad_correct / nonpad_seen
 
+def write_out(model, test_from_lang, test_to_lang, to_lang_vocab):
+	logits = model.forward(torch.tensor(test_from_lang), torch.tensor(test_to_lang[:, :-1]))
+	predictions = np.argmax(logits.detach().numpy(), axis=2)
+	inv_map = {v: k for k, v in to_lang_vocab.items()}
+	translated_text = []
+	source_text = []
+	for sentence in predictions:
+		translated_text.append([inv_map[i] for i in sentence])
+	for sentence in test_to_lang:
+		source_text.append([inv_map[i] for i in sentence])
+	with open("translated", "w+") as file:
+		for sentence in translated_text:
+			file.write(' '.join(sentence) + '\n')
+	with open("source", "w+") as file:
+		for sentence in source_text:
+			file.write(' '.join(sentence) + '\n')
+
 def main():
 	print("Running preprocessing...")
 	lensent = 25
@@ -103,7 +120,6 @@ def main():
 
 	model_args = (train_from_lang.shape[1], train_to_lang.shape[1] - 1, len(from_lang_vocab), len(to_lang_vocab))
 	model = UniversalTransformer(*model_args)
-
 
 	# TODO:
 	# Train and Test Model for n epochs
@@ -120,7 +136,6 @@ def main():
 	perplexity, acc = test(model, test_from_lang, test_to_lang, to_lang_padding_index)
 	print('Perplexity: ', perplexity)
 	print('Accuracy: ', acc)
+	write_out(model, test_from_lang, test_to_lang, to_lang_vocab)
 if __name__ == '__main__':
 	main()
-
-
