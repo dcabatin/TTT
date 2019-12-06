@@ -84,7 +84,7 @@ def read_data(file_name):
 	return text
 
 
-def get_data(french_file, english_file, lensent):
+def get_data_hansard(french_training_file, english_training_file, french_test_file, english_test_file, lensent):
 	"""
 	Use the helper functions in this file to read and parse training and test data, then pad the corpus.
 	Then vectorize your train and test data based on your vocabulary dictionaries.
@@ -105,18 +105,13 @@ def get_data(french_file, english_file, lensent):
 	"""
 	# MAKE SURE YOU RETURN SOMETHING IN THIS PARTICULAR ORDER: train_english, test_english, train_french, test_french, english_vocab, french_vocab, eng_padding_index
 
-	french, english = pad_corpus(read_data(french_file), read_data(english_file), lensent)
+	french_train, english_train = pad_corpus(read_data(french_training_file), read_data(english_training_file), lensent)
+	french_test, english_test = pad_corpus(read_data(french_test_file), read_data(english_test_file), lensent)
 
-	french_vocab, _ = build_vocab(french)
-	english_vocab, pad_token_idx = build_vocab(english)
+	french_vocab, _ = build_vocab(french_train)
+	english_vocab, pad_token_idx = build_vocab(english_train)
 
-	english = convert_to_id(english_vocab, english)
-	french = convert_to_id(french_vocab, french)
+	french_train, english_train = convert_to_id(french_vocab, french_train), convert_to_id(english_vocab, english_train)
+	french_test, english_test = convert_to_id(french_vocab, french_test), convert_to_id(english_vocab, english_train)
 
-	np.random.shuffle(english)
-	np.random.shuffle(french)
-
-	en_train_num = int(0.9*len(english))
-	fr_train_num = int(0.9*len(french))
-
-	return french[:fr_train_num], french[fr_train_num:], english[:en_train_num], english[en_train_num:], french_vocab, english_vocab, pad_token_idx
+	return french_train, french_test, english_train, english_test, french_vocab, english_vocab, pad_token_idx

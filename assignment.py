@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torch
 import numpy as np
 from preprocess import *
+from preprocess_hansard import get_data_hansard
 from universal_transformer import UniversalTransformer
 import sys
 
@@ -93,21 +94,37 @@ def test(model, test_from_lang, test_to_lang, to_lang_padding_index):
 	return torch.exp(total_loss / steps), nonpad_correct / nonpad_seen
 
 def write_out(model, test_from_lang, test_to_lang, to_lang_vocab):
-	logits = model.forward(torch.tensor(test_from_lang), torch.tensor(test_to_lang[:, :-1]))
-	predictions = np.argmax(logits.detach().numpy(), axis=2)
 	inv_map = {v: k for k, v in to_lang_vocab.items()}
-	translated_text = []
-	source_text = []
-	for sentence in predictions:
-		translated_text.append([inv_map[i] for i in sentence])
-	for sentence in test_to_lang:
-		source_text.append([inv_map[i] for i in sentence])
-	with open("translated", "w+") as file:
-		for sentence in translated_text:
-			file.write(' '.join(sentence) + '\n')
-	with open("source", "w+") as file:
-		for sentence in source_text:
-			file.write(' '.join(sentence) + '\n')
+	for i in range(0, test_from_lang.shape[0] - model.batch_size + 1, model.batch_size):
+		print('Writing batch {}-{} / {}'.format(i, i + model.batch_size, test_from_lang.shape[0]))
+		from_data = test_from_lang[i: i + model.batch_size]
+		to_data = test_to_lang[i: i + model.batch_size]
+		logits = model.forward(torch.tensor(from_data), torch.tensor(to_data[:, :-1]))
+		print("DONE WITH FORWARD PASS")
+		predictions = np.argmax(logits.detach().numpy(), axis=2)
+		translated_text = []
+		source_text = []
+		print("CREATING STRINGS")
+		for sentence in predictions:
+			translated_text.append([inv_map[i] for i in sentence])
+		for sentence in to_data:
+			source_text.append([inv_map[i] for i in sentence])
+		print("WRITING STRINGS")
+		with open("translated", "a+") as file:
+			for sentence in translated_text:
+				file.write(' '.join(sentence) + '\n')
+		with open("source", "a+") as file:
+			for sentence in source_text:
+				file.write(' '.join(sentence) + '\n')
+
+def merge_vocab(vocab1, vocab2):
+	combined = vocab2
+	index = len(vocab2)
+	for word in vocab1:
+		if word not in vocab2:
+			combined[word] = index
+			index += 1
+	return combined
 
 def main():
 	print("Running preprocessing...")
@@ -115,15 +132,36 @@ def main():
 	train_from_lang,test_from_lang,train_to_lang,test_to_lang,\
 	from_lang_vocab,to_lang_vocab,to_lang_padding_index = \
 		get_data('data/MTNT/train/train.fr-en.tsv', 'data/MTNT/test/test.fr-en.tsv', lensent)
+	train_from_lang_nn,test_from_lang_nn,train_to_lang_nn,test_to_lang_nn,\
+	from_lang_vocab_nn,to_lang_vocab_nn,to_lang_padding_index_nn = \
+		get_data_hansard('data/hansard/fls.txt', 'data/hansard/els.txt', 'data/hansard/flt.txt', 'data/hansard/elt.txt', lensent)
 	print("Preprocessing complete.")
 	print('tl shape:', train_to_lang.shape, 'fl shape:', train_from_lang.shape)
+	print('tl_nn shape:', train_to_lang_nn.shape, 'fl_nn shape:', train_from_lang_nn.shape)
+
+	from_lang_vocab = merge_vocab(from_lang_vocab, from_lang_vocab_nn)
+	to_lang_vocab = merge_vocab(to_lang_vocab, to_lang_vocab_nn)
 
 	model_args = (train_from_lang.shape[1], train_to_lang.shape[1] - 1, len(from_lang_vocab), len(to_lang_vocab))
 	model = UniversalTransformer(*model_args)
 
-	# TODO:
+	# Pretrain on non-noisy data
+	n_epochs = 1
+	for _ in range(n_epochs):
+		train(model, train_from_lang_nn, train_to_lang_nn, to_lang_padding_index)
+		indices = np.array(range(test_from_lang.shape[0]))
+		np.random.shuffle(indices)
+		from_shuf = test_from_lang[indices[:model.batch_size*10], ...]
+		to_shuf = test_to_lang[indices[:model.batch_size*10], ...]
+		perp, acc = test(model, from_shuf, to_shuf, to_lang_padding_index)
+		print('========= EPOCH %d ==========' % _)
+		print('Test perplexity is', perp, ':: Test accuracy is', acc)
+	perplexity, acc = test(model, test_from_lang, test_to_lang, to_lang_padding_index)
+	print('Perplexity: ', perplexity)
+	print('Accuracy: ', acc)
+
 	# Train and Test Model for n epochs
-	n_epochs = 20
+	n_epochs = 1
 	for _ in range(n_epochs):
 		train(model, train_from_lang, train_to_lang, to_lang_padding_index)
 		indices = np.array(range(test_from_lang.shape[0]))
