@@ -31,6 +31,7 @@ def get_accuracy(logits, labels, mask):
 	accuracy = correct_flat[mask_flat.bool()].float().mean()
 	return accuracy
 
+@torch.enable_grad()
 def train(model, train_from_lang, train_to_lang, to_lang_padding_index):
 	"""
 	Runs through one epoch - all training examples.
@@ -60,6 +61,7 @@ def train(model, train_from_lang, train_to_lang, to_lang_padding_index):
 		print('Train perplexity for batch of {}-{} / {} is {}'.format(i, i + model.batch_size, train_from_lang.shape[0], torch.exp(loss)))
 		print('Loss is', loss)
 
+@torch.no_grad()
 def test(model, test_from_lang, test_to_lang, to_lang_padding_index):
 	"""
 	Runs through one epoch - all testing examples.
