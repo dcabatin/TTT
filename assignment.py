@@ -5,7 +5,6 @@ import torch.nn.functional as F
 import torch
 import numpy as np
 from preprocess import *
-from preprocess_hansard import get_data_hansard
 from universal_transformer import UniversalTransformer
 import sys
 
@@ -117,33 +116,23 @@ def write_out(model, test_from_lang, test_to_lang, to_lang_vocab):
 			for sentence in source_text:
 				file.write(' '.join(sentence) + '\n')
 
-def merge_vocab(vocab1, vocab2):
-	combined = vocab2
-	index = len(vocab2)
-	for word in vocab1:
-		if word not in vocab2:
-			combined[word] = index
-			index += 1
-	return combined
-
 def main():
 	print("Running preprocessing...")
 	lensent = 25
 	train_from_lang,test_from_lang,train_to_lang,test_to_lang,\
-	from_lang_vocab,to_lang_vocab,to_lang_padding_index = \
-		get_data('data/MTNT/train/train.fr-en.tsv', 'data/MTNT/test/test.fr-en.tsv', lensent)
+	from_lang_vocab,to_lang_vocab,\
 	train_from_lang_nn,test_from_lang_nn,train_to_lang_nn,test_to_lang_nn,\
-	from_lang_vocab_nn,to_lang_vocab_nn,to_lang_padding_index_nn = \
-		get_data_hansard('data/hansard/fls.txt', 'data/hansard/els.txt', 'data/hansard/flt.txt', 'data/hansard/elt.txt', lensent)
+	to_lang_padding_index = \
+		get_data('data/MTNT/train/train.fr-en.tsv', 'data/MTNT/test/test.fr-en.tsv', lensent)
 	print("Preprocessing complete.")
 	print('tl shape:', train_to_lang.shape, 'fl shape:', train_from_lang.shape)
 	print('tl_nn shape:', train_to_lang_nn.shape, 'fl_nn shape:', train_from_lang_nn.shape)
 
-	from_lang_vocab = merge_vocab(from_lang_vocab, from_lang_vocab_nn)
-	to_lang_vocab = merge_vocab(to_lang_vocab, to_lang_vocab_nn)
-
 	model_args = (train_from_lang.shape[1], train_to_lang.shape[1] - 1, len(from_lang_vocab), len(to_lang_vocab))
 	model = UniversalTransformer(*model_args)
+
+	train_from_lang_nn,test_from_lang_nn,train_to_lang_nn,test_to_lang_nn = \
+	train_from_lang_nn[:2000],test_from_lang_nn,train_to_lang_nn[:2000],test_to_lang_nn
 
 	# Pretrain on non-noisy data
 	n_epochs = 1
@@ -156,7 +145,7 @@ def main():
 		perp, acc = test(model, from_shuf, to_shuf, to_lang_padding_index)
 		print('========= EPOCH %d ==========' % _)
 		print('Test perplexity is', perp, ':: Test accuracy is', acc)
-	perplexity, acc = test(model, test_from_lang, test_to_lang, to_lang_padding_index)
+	perplexity, acc = test(model, test_from_lang_nn, test_to_lang_nn, to_lang_padding_index)
 	print('Perplexity: ', perplexity)
 	print('Accuracy: ', acc)
 

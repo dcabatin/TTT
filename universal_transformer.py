@@ -23,8 +23,8 @@ class UniversalTransformer(Module):
 			out_seq_len, self.nheads, self.decoder_T, self.dropout, self.embedding_size)
 		self.enc_embedding_layer = nn.Embedding(in_vocab_len, self.embedding_size)
 		self.dec_embedding_layer = nn.Embedding(out_vocab_len, self.embedding_size)
-		self.ff_layer_1 = nn.Linear(self.embedding_size, 64)
-		self.ff_layer_2 = nn.Linear(64, out_vocab_len)
+		self.ff_layer_1 = nn.Linear(self.embedding_size, 128)
+		self.ff_layer_2 = nn.Linear(128, out_vocab_len)
 		self.dropout_layer = nn.Dropout(self.dropout)
 
 		self.optimizer = torch.optim.Adam(self.parameters(), lr=0.001)

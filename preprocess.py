@@ -81,6 +81,19 @@ def read_parallel_data(file_name):
 			l_to_sents.append(l_to.split())
 	return [l_from_sents, l_to_sents]
 
+def read_data(file_name):
+	"""
+	DO NOT CHANGE
+
+  Load text data from file
+
+	:param file_name:  string, name of data file
+	:return: list of sentences, each a list of words split on whitespace
+  """
+	text = []
+	with open(file_name, 'rt', encoding='latin') as data_file:
+		for line in data_file: text.append(line.split())
+	return text
 
 def get_data(train_file, test_file, sent_len=13):
 	"""
@@ -107,18 +120,30 @@ def get_data(train_file, test_file, sent_len=13):
 	l_from_train, l_to_train = read_parallel_data(train_file)
 	l_from_test, l_to_test = read_parallel_data(test_file)
 
+	# get pretraining data
+	l_from_train_nn, l_to_train_nn = pad_corpus(read_data('data/hansard/fls.txt'), read_data('data/hansard/els.txt'), sent_len)
+	l_from_test_nn, l_to_test_nn = pad_corpus(read_data('data/hansard/flt.txt'), read_data('data/hansard/elt.txt'), sent_len)
+
 	# 2) Pad training data (see pad_corpus)
 	l_from_train, l_to_train = pad_corpus(l_from_train, l_to_train, sent_len)
 	# 3) Pad testing data (see pad_corpus)
 	l_from_test, l_to_test = pad_corpus(l_from_test, l_to_test, sent_len)
+
 	# 4) Build vocab for l_froml_toch (see build_vocab)
-	l_from_vocab, _ = build_vocab(l_from_train)
+	l_from_vocab, _ = build_vocab(l_from_train+l_from_train_nn)
 	# 5) Build vocab for l_toglish (see build_vocab)
-	l_to_vocab, pad_id = build_vocab(l_to_train)
+	l_to_vocab, pad_id = build_vocab(l_to_train+l_to_train_nn)
+
 	# 6) Convert training and testing l_toglish sl_totl_toces to list of IDS (see convert_to_id)
 	l_to_train_ids = convert_to_id(l_to_vocab, l_to_train)
 	l_to_test_ids = convert_to_id(l_to_vocab, l_to_test)
+
 	# 7) Convert training and testing l_froml_toch sl_totl_toces to list of IDS (see convert_to_id)
 	l_from_train_ids = convert_to_id(l_from_vocab, l_from_train)
 	l_from_test_ids = convert_to_id(l_from_vocab, l_from_test)
-	return l_from_train_ids, l_from_test_ids, l_to_train_ids, l_to_test_ids, l_from_vocab, l_to_vocab, pad_id
+
+	l_from_train_nn, l_to_train_nn = convert_to_id(l_from_vocab, l_from_train_nn), convert_to_id(l_to_vocab, l_to_train_nn)
+	l_from_test_nn, l_to_test_nn = convert_to_id(l_from_vocab, l_from_test_nn), convert_to_id(l_to_vocab, l_to_train_nn)
+
+	return l_from_train_ids, l_from_test_ids, l_to_train_ids, l_to_test_ids, l_from_vocab, l_to_vocab, \
+		   l_from_train_nn, l_from_test_nn, l_to_train_nn, l_to_test_nn, pad_id
