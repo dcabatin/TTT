@@ -143,7 +143,7 @@ def get_data(train_file, test_file, sent_len=13):
 	l_from_test_ids = convert_to_id(l_from_vocab, l_from_test)
 
 	l_from_train_nn, l_to_train_nn = convert_to_id(l_from_vocab, l_from_train_nn), convert_to_id(l_to_vocab, l_to_train_nn)
-	l_from_test_nn, l_to_test_nn = convert_to_id(l_from_vocab, l_from_test_nn), convert_to_id(l_to_vocab, l_to_train_nn)
+	l_from_test_nn, l_to_test_nn = convert_to_id(l_from_vocab, l_from_test_nn), convert_to_id(l_to_vocab, l_to_test_nn)
 
 	return l_from_train_ids, l_from_test_ids, l_to_train_ids, l_to_test_ids, l_from_vocab, l_to_vocab, \
 		   l_from_train_nn, l_from_test_nn, l_to_train_nn, l_to_test_nn, pad_id
