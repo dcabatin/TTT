@@ -133,11 +133,11 @@ def main():
 	model_args = (train_from_lang.shape[1], train_to_lang.shape[1] - 1, len(from_lang_vocab), len(to_lang_vocab))
 	model = UniversalTransformer(*model_args)
 
-	train_from_lang_nn,test_from_lang_nn,train_to_lang_nn,test_to_lang_nn = \
-	train_from_lang_nn[:2000],test_from_lang_nn,train_to_lang_nn[:2000],test_to_lang_nn
+	# train_from_lang_nn,test_from_lang_nn,train_to_lang_nn,test_to_lang_nn = \
+	# train_from_lang_nn[:200],test_from_lang_nn,train_to_lang_nn[:200],test_to_lang_nn
 
 	# Pretrain on non-noisy data
-	n_epochs = 1
+	n_epochs = 10
 	for _ in range(n_epochs):
 		train(model, train_from_lang_nn, train_to_lang_nn, to_lang_padding_index)
 		indices = np.array(range(test_from_lang.shape[0]))
@@ -152,7 +152,7 @@ def main():
 	print('Accuracy: ', acc)
 
 	# Train and Test Model for n epochs
-	n_epochs = 1
+	n_epochs = 20
 	for _ in range(n_epochs):
 		train(model, train_from_lang, train_to_lang, to_lang_padding_index)
 		indices = np.array(range(test_from_lang.shape[0]))
