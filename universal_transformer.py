@@ -4,6 +4,8 @@ from torch.nn import TransformerEncoder, TransformerDecoder, TransformerEncoderL
 import torch.nn as nn
 import math
 
+torch.set_default_tensor_type(torch.cuda.FloatTensor)
+
 class UniversalTransformer(Module):
 	def __init__(self, in_seq_len, out_seq_len, in_vocab_len, out_vocab_len, *args, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -74,9 +76,9 @@ class PositionalTimeEncoding(nn.Module):
 		self.d_model = d_model
 
 		# Compute the positional encodings once in log space.
-		self.pe = torch.zeros(seq_len, d_model)
-		position = torch.arange(0, seq_len).unsqueeze(1)
-		self.div_term = torch.exp(torch.arange(0, d_model, 2) * -(math.log(10000.0) / d_model))
+		self.pe = torch.zeros(seq_len, d_model).float()
+		position = torch.arange(0, seq_len).unsqueeze(1).float()
+		self.div_term = torch.exp(torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model))
 
 		self.pe[:, 0::2] = torch.sin(position * self.div_term)
 		self.pe[:, 1::2] = torch.cos(position * self.div_term)
