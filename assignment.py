@@ -57,8 +57,9 @@ def train(model, train_from_lang, train_to_lang, to_lang_padding_index):
                 model.optimizer.zero_grad()
                 from_data = torch.tensor(from_shuf[i: i + model.batch_size])
                 to_data = torch.tensor(to_shuf[i: i + model.batch_size])
-                from_data.cuda()
-                to_data.cuda()
+                if device == "cuda":
+                    from_data.cuda()
+                    to_data.cuda()
 
                 logits = model.forward(from_data, to_data[:, :-1])
                 labels = to_data[:, 1:]
@@ -91,14 +92,16 @@ def test(model, test_from_lang, test_to_lang, to_lang_padding_index):
         for i in range(0, test_from_lang.shape[0] - model.batch_size + 1, model.batch_size):
                 from_data = torch.tensor(test_from_lang[i: i + model.batch_size])
                 to_data = torch.tensor(test_to_lang[i: i + model.batch_size])
-                from_data.cuda()
-                to_data.cuda()
+                
+                if device == "cuda":
+                    from_data.cuda()
+                    to_data.cuda()
 
                 logits = model.forward(from_data, to_data[:, :-1])
                 labels = to_data[:, 1:]
                 total_loss += loss_layer(logits.view(-1, logits.size(-1)), labels.reshape(-1))
                 mask = torch.ne(labels, to_lang_padding_index)
-                np_seen_batch = np.count_nonzero(mask)
+                np_seen_batch = np.count_nonzero(mask.cpu())
                 nonpad_seen += np_seen_batch
                 nonpad_correct += np_seen_batch * get_accuracy(logits, labels, mask)
                 steps += 1
@@ -143,7 +146,8 @@ def main():
 
         model_args = (train_from_lang.shape[1], train_to_lang.shape[1] - 1, len(from_lang_vocab), len(to_lang_vocab))
         model = UniversalTransformer(*model_args)
-        model.cuda()
+        if device == "cuda":
+            model.cuda()
 
         # train_from_lang_nn,test_from_lang_nn,train_to_lang_nn,test_to_lang_nn = \
         # train_from_lang_nn[:200],test_from_lang_nn,train_to_lang_nn[:200],test_to_lang_nn
