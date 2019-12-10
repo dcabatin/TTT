@@ -1,5 +1,7 @@
-# TTT
+# TTT - Train, Transform, Translate
 Deep Learning Fall 2019 Final Project
+
+Group Big Brain Learning 🤔 
 
 The Universal Transformer model can be found in `universal_transformer.py`.
 Scripts to process the data can be found in `preprocess.py`.
