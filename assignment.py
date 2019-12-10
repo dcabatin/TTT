@@ -102,7 +102,11 @@ def write_out(model, test_from_lang, test_to_lang, to_lang_vocab):
 		to_data = test_to_lang[i: i + model.batch_size]
 		logits = model.forward(torch.tensor(from_data), torch.tensor(to_data[:, :-1]))
 		print("DONE WITH FORWARD PASS")
-		predictions = np.argmax(F.softmax(logits, dim=2).detach().numpy(), axis=2)
+		softmaxed = F.softmax(logits, dim=2).detach().numpy()
+		predictions = np.zeros((softmaxed.shape[0], softmaxed.shape[1]))
+		for i in range(softmaxed.shape[0]):
+			for j in range(softmaxed.shape[1]):
+				predictions[i, j] = np.random.choice(np.arange(len(to_lang_vocab)), p=softmaxed[i, j, :])
 		# predictions = np.argmax(logits.detach().numpy(), axis=2)
 		translated_text = []
 		source_text = []
