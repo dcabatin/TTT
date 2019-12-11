@@ -116,7 +116,12 @@ def write_out(model, test_from_lang, test_to_lang, to_lang_vocab):
                 to_data = test_to_lang[i: i + model.batch_size]
                 logits = model.forward(torch.tensor(from_data), torch.tensor(to_data[:, :-1]))
                 print("DONE WITH FORWARD PASS")
-                predictions = np.argmax(logits.detach().cpu().numpy(), axis=2)
+                #predictions = np.argmax(logits.detach().cpu().numpy(), axis=2)
+                softmaxed = F.softmax(logits, dim=2).detach().cpu().numpy()
+                predictions = np.zeros((softmaxed.shape[0], softmaxed.shape[1]))
+                for i in range(softmaxed.shape[0]):
+                        for j in range(softmaxed.shape[1]):
+                                predictions[i, j] = np.random.choice(np.arange(len(to_lang_vocab)), p=softmaxed[i, j, :])
                 translated_text = []
                 source_text = []
                 print("CREATING STRINGS")
@@ -170,7 +175,10 @@ def main():
         # Train and Test Model for n epochs
         n_epochs = 20
         for _ in range(n_epochs):
-                train(model, train_from_lang, train_to_lang, to_lang_padding_index)
+                indices = np.array(range(train_from_lang_nn.shape[0]))
+                from_nn = train_from_lang_nn[indices[:20000], ...]
+                to_nn = train_to_lang_nn[indices[:20000], ...]
+                train(model, torch.cat((torch.tensor(train_from_lang), torch.tensor(from_nn))), torch.cat((torch.tensor(train_to_lang), torch.tensor(to_nn))), to_lang_padding_index)
                 indices = np.array(range(test_from_lang.shape[0]))
                 np.random.shuffle(indices)
                 from_shuf = test_from_lang[indices[:model.batch_size*10], ...]

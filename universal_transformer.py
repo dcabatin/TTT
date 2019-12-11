@@ -10,12 +10,12 @@ class UniversalTransformer(Module):
 	def __init__(self, in_seq_len, out_seq_len, in_vocab_len, out_vocab_len, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 
-		self.batch_size = 200
+		self.batch_size = 100
 		self.nheads = 16
 		self.encoder_T = 6
 		self.decoder_T = 6
 		self.embedding_size = 512
-		self.dropout = 0.15
+		self.dropout = 0.1
 		self.in_seq_len = in_seq_len
 		self.out_seq_len = out_seq_len
 
@@ -25,11 +25,13 @@ class UniversalTransformer(Module):
 			out_seq_len, self.nheads, self.decoder_T, self.dropout, self.embedding_size)
 		self.enc_embedding_layer = nn.Embedding(in_vocab_len, self.embedding_size)
 		self.dec_embedding_layer = nn.Embedding(out_vocab_len, self.embedding_size)
+                self.enc_embedding_layer.weight.requires_grad = False
+                self.dec_embedding_layer.weight.requires_grad = False
 		self.ff_layer_1 = nn.Linear(self.embedding_size, 1024, bias=True)
 		self.ff_layer_2 = nn.Linear(1024, out_vocab_len, bias=True)
 		self.dropout_layer = nn.Dropout(self.dropout)
 
-		self.optimizer = torch.optim.Adam(self.parameters(), lr=0.004)
+		self.optimizer = torch.optim.Adam(self.parameters(), lr=0.0005)
 
 	def forward(self, encoder_input, decoder_input):
 		enc_embeddings = self.enc_embedding_layer(encoder_input)
