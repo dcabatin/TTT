@@ -116,7 +116,7 @@ def write_out(model, test_from_lang, test_to_lang, to_lang_vocab):
                 to_data = test_to_lang[i: i + model.batch_size]
                 logits = model.forward(torch.tensor(from_data), torch.tensor(to_data[:, :-1]))
                 print("DONE WITH FORWARD PASS")
-                predictions = np.argmax(logits.detach().numpy(), axis=2)
+                predictions = np.argmax(logits.detach().cpu().numpy(), axis=2)
                 translated_text = []
                 source_text = []
                 print("CREATING STRINGS")
@@ -153,13 +153,13 @@ def main():
         # train_from_lang_nn[:200],test_from_lang_nn,train_to_lang_nn[:200],test_to_lang_nn
 
         # Pretrain on non-noisy data
-        n_epochs = 10
+        n_epochs = 5
         for _ in range(n_epochs):
                 train(model, train_from_lang_nn, train_to_lang_nn, to_lang_padding_index)
-                indices = np.array(range(test_from_lang.shape[0]))
+                indices = np.array(range(test_from_lang_nn.shape[0]))
                 np.random.shuffle(indices)
-                from_shuf = test_from_lang[indices[:model.batch_size*10], ...]
-                to_shuf = test_to_lang[indices[:model.batch_size*10], ...]
+                from_shuf = test_from_lang_nn[indices[:model.batch_size*10], ...]
+                to_shuf = test_to_lang_nn[indices[:model.batch_size*10], ...]
                 perp, acc = test(model, from_shuf, to_shuf, to_lang_padding_index)
                 print('========= EPOCH %d ==========' % _)
                 print('Test perplexity is', perp, ':: Test accuracy is', acc)

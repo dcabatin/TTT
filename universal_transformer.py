@@ -11,11 +11,11 @@ class UniversalTransformer(Module):
 		super().__init__(*args, **kwargs)
 
 		self.batch_size = 200
-		self.nheads = 4
+		self.nheads = 16
 		self.encoder_T = 6
 		self.decoder_T = 6
-		self.embedding_size = 32
-		self.dropout = 0.3
+		self.embedding_size = 512
+		self.dropout = 0.15
 		self.in_seq_len = in_seq_len
 		self.out_seq_len = out_seq_len
 
@@ -25,25 +25,25 @@ class UniversalTransformer(Module):
 			out_seq_len, self.nheads, self.decoder_T, self.dropout, self.embedding_size)
 		self.enc_embedding_layer = nn.Embedding(in_vocab_len, self.embedding_size)
 		self.dec_embedding_layer = nn.Embedding(out_vocab_len, self.embedding_size)
-		self.ff_layer_1 = nn.Linear(self.embedding_size, 1024)
-		self.ff_layer_2 = nn.Linear(1024, out_vocab_len)
+		self.ff_layer_1 = nn.Linear(self.embedding_size, 1024, bias=True)
+		self.ff_layer_2 = nn.Linear(1024, out_vocab_len, bias=True)
 		self.dropout_layer = nn.Dropout(self.dropout)
 
-		self.optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
+		self.optimizer = torch.optim.Adam(self.parameters(), lr=0.004)
 
 	def forward(self, encoder_input, decoder_input):
 		enc_embeddings = self.enc_embedding_layer(encoder_input)
 		enc_output = self.enc_layer(enc_embeddings)
 		dec_embeddings = self.dec_embedding_layer(decoder_input)
 		dec_output = self.dec_layer(dec_embeddings, enc_output)
-		return self.ff_layer_2(self.dropout_layer(self.ff_layer_1(dec_output)))
+		return self.ff_layer_2(self.dropout_layer(F.relu(self.ff_layer_1(self.dropout_layer(dec_output)))))
 
 class UniversalTransformerEncoder(Module):
 	def __init__(self, seq_len, nheads, T, dropout, emb_size, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.T = T
 		layer_norm = nn.LayerNorm((seq_len, emb_size))
-		self.enc = TransformerEncoder(TransformerEncoderLayer(emb_size, nheads, dim_feedforward=1024, dropout=dropout), 1, norm=layer_norm)
+		self.enc = TransformerEncoder(TransformerEncoderLayer(emb_size, nheads, dim_feedforward=4096, dropout=dropout), 1, norm=layer_norm)
 		self.pos = PositionalTimeEncoding(emb_size, seq_len)
 
 	def forward(self, x):
@@ -58,7 +58,7 @@ class UniversalTransformerDecoder(Module):
 		super().__init__(*args, **kwargs)
 		self.T = T
 		layer_norm = nn.LayerNorm((seq_len, emb_size))
-		self.dec = TransformerDecoder(TransformerDecoderLayer(emb_size, nheads, dim_feedforward=1024, dropout=dropout), 1, norm=layer_norm)
+		self.dec = TransformerDecoder(TransformerDecoderLayer(emb_size, nheads, dim_feedforward=4096, dropout=dropout), 1, norm=layer_norm)
 		self.pos = PositionalTimeEncoding(emb_size, seq_len)
 
 	def forward(self, x, encoder_out):
