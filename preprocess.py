@@ -80,6 +80,15 @@ def read_parallel_data(file_name):
 			l_from_sents.append(l_from.split())
 			l_to_sents.append(l_to.split())
 	return [l_from_sents, l_to_sents]
+import string
+def fix_sents(sents):
+	for i in range(len(sents)):
+		sent = sents[i]
+		for j in range(len(sent)):
+			word = sent[j].translate(str.maketrans('','', string.punctuation))
+			sent[j] = word
+		sents[i] = sent # unneccessary
+	return sents            
 
 def read_data(file_name):
 	"""
@@ -123,7 +132,7 @@ def get_data(train_file, test_file, sent_len=13):
 	# get pretraining data
 	l_from_train_nn, l_to_train_nn = pad_corpus(read_data('data/hansard/fls.txt'), read_data('data/hansard/els.txt'), sent_len)
 	l_from_test_nn, l_to_test_nn = pad_corpus(read_data('data/hansard/flt.txt'), read_data('data/hansard/elt.txt'), sent_len)
-
+	l_from_train, l_to_train, l_from_test, l_to_test = fix_sents(l_from_train), fix_sents(l_to_train), fix_sents(l_from_test), fix_sents(l_to_test)
 	# 2) Pad training data (see pad_corpus)
 	l_from_train, l_to_train = pad_corpus(l_from_train, l_to_train, sent_len)
 	# 3) Pad testing data (see pad_corpus)
