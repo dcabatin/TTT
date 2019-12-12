@@ -1,10 +1,10 @@
 import numpy as np
 
 ##########DO NOT CHANGE#####################
-PAD_TOKEN = "*PAD*"
-STOP_TOKEN = "*STOP*"
-START_TOKEN = "*START*"
-UNK_TOKEN = "*UNK*"
+PAD_TOKEN = "*pad*"
+STOP_TOKEN = "*stop*"
+START_TOKEN = "*start*"
+UNK_TOKEN = "*unk*"
 ##########DO NOT CHANGE#####################
 
 def pad_corpus(l_from_sents, l_to_sents, sent_len):
@@ -80,6 +80,18 @@ def read_parallel_data(file_name):
 			l_from_sents.append(l_from.split())
 			l_to_sents.append(l_to.split())
 	return [l_from_sents, l_to_sents]
+import string
+def fix_sents(sents):
+	for i in range(len(sents)):
+		sent = sents[i]
+		for j in range(len(sent)):
+			word = sent[j].lower()
+			if not(word[0] == '*' and word[-1] == '*'):
+				word = word.translate(str.maketrans('','', string.punctuation)) 
+			sent[j] = word
+		sent = list(filter(lambda w: w, sent)) 
+		sents[i] = sent
+	return sents            
 
 def read_data(file_name):
 	"""
@@ -121,14 +133,17 @@ def get_data(train_file, test_file, sent_len=13):
 	l_from_test, l_to_test = read_parallel_data(test_file)
 
 	# get pretraining data
-	l_from_train_nn, l_to_train_nn = pad_corpus(read_data('data/hansard/fls.txt'), read_data('data/hansard/els.txt'), sent_len)
-	l_from_test_nn, l_to_test_nn = pad_corpus(read_data('data/hansard/flt.txt'), read_data('data/hansard/elt.txt'), sent_len)
+	l_from_train_nn, l_to_train_nn = read_data('data/hansard/fls.txt'), read_data('data/hansard/els.txt')
+	l_from_test_nn, l_to_test_nn = read_data('data/hansard/flt.txt'), read_data('data/hansard/elt.txt')
 
+	l_from_train, l_to_train, l_from_test, l_to_test = fix_sents(l_from_train), fix_sents(l_to_train), fix_sents(l_from_test), fix_sents(l_to_test)
+	l_from_train_nn, l_to_train_nn, l_from_test_nn, l_to_test_nn = fix_sents(l_from_train_nn), fix_sents(l_to_train_nn), fix_sents(l_from_test_nn), fix_sents(l_to_test_nn)
 	# 2) Pad training data (see pad_corpus)
 	l_from_train, l_to_train = pad_corpus(l_from_train, l_to_train, sent_len)
 	# 3) Pad testing data (see pad_corpus)
 	l_from_test, l_to_test = pad_corpus(l_from_test, l_to_test, sent_len)
-
+	l_from_train_nn, l_to_train_nn = pad_corpus(l_from_train_nn, l_to_train_nn, sent_len)
+	l_from_test_nn, l_to_test_nn = pad_corpus(l_from_test_nn, l_to_test_nn, sent_len)
 	# 4) Build vocab for l_froml_toch (see build_vocab)
 	l_from_vocab, _ = build_vocab(l_from_train+l_from_train_nn)
 	# 5) Build vocab for l_toglish (see build_vocab)
